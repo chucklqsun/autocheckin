@@ -2,17 +2,13 @@ package main
 
 import (
 	"bufio"
-	"crypto/tls"
 	"fmt"
 	"io"
-	"io/ioutil"
-	"net/http"
-	"net/url"
 	"os"
-	"strings"
+	"sync"
 )
 
-var _, _ = url.Parse("")
+var w sync.WaitGroup
 
 func readCookie(infile string) (str string, err error) {
 
@@ -42,7 +38,7 @@ func readCookie(infile string) (str string, err error) {
 	return
 }
 
-func sendRequest(vendorName string) {
+func checkin(vendorName string) {
 	//todo: load cookie file in run dir now, auto loading in the further
 	var cookie_err error
 	myVendor.config[vendorName]["head"].(aci_head).data["cookie"], cookie_err = readCookie("cookie")
@@ -50,85 +46,29 @@ func sendRequest(vendorName string) {
 		fmt.Println(cookie_err)
 		return
 	}
-
-	//get vendor api url
-	targetUrl := myVendor.config[vendorName]["url"].(string)
-
-	tr := &http.Transport{}
-
-	//ignore https verify
-	tr.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
-
-	//proxy setup,not neccessary
-	if proxy_url, ok := myVendor.config[vendorName]["proxy"]; ok {
-		proxy, _ := url.Parse(proxy_url.(string))
-		tr.Proxy = http.ProxyURL(proxy)
+	checkin_req := aci_request{
+		url:    myVendor.config[vendorName]["url_checkin"].(string),
+		proxy:  myVendor.config[vendorName]["proxy"].(string),
+		method: myVendor.config[vendorName]["method"].(string),
+		head:   myVendor.config[vendorName]["head"].(aci_head).data,
+		body:   myVendor.config[vendorName]["body"],
 	}
+	checkin_req.sendRequest()
 
-	client := &http.Client{Transport: tr}
-
-	//get vendor method
-	method := myVendor.config[vendorName]["method"].(string)
-	var (
-		req  *http.Request
-		err  error
-		body io.Reader //used for POST only
-	)
-
-	//setup request body
-	switch {
-	case method == "POST":
-		data_func := myVendor.config[vendorName]["body"].(func() string)
-		body = strings.NewReader(data_func())
-	case method == "GET":
-		body = nil
-	default:
-		body = nil
-	}
-	req, err = http.NewRequest(method, targetUrl, body)
-
-	//setup common header
-	for key, value := range common_head.data {
-		req.Header.Set(key, value)
-	}
-
-	//setup vendor header
-	//"head" convert interface to aci_head type
-	vender_head := myVendor.config[vendorName]["head"].(aci_head)
-	for key, value := range vender_head.data {
-		req.Header.Set(key, value)
-	}
-
-	resp, err := client.Do(req)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	defer resp.Body.Close()
-
-	if err != nil {
-		fmt.Println(err)
-		return
-	} else {
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			fmt.Println(err)
-			return
-		} else {
-			if feedback, err := json_decode(body); err == nil {
-				fmt.Println(feedback)
-			} else {
-				fmt.Println(err)
-				return
-			}
-		}
-	}
-
+	w.Done()
 }
 
 func main() {
+	fmt.Println("Begin")
 	for key, _ := range myVendor.config {
-		sendRequest(key)
+		if myVendor.config[key]["status"].(int) == 0 {
+			continue
+		}
+
+		w.Add(1)
+		go checkin(key)
+		fmt.Println("Job -> ", key)
 	}
+	w.Wait()
+	fmt.Println("End")
 }
