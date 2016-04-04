@@ -5,7 +5,7 @@ How to use:
 1. modify the api config in vendor.go, point to the task url you want to checkin  
 2. add username/password into file "account"  
 3. fetch cookie and store by Chrome or other browser(temporary solution,login module will be added later)  
-4. save the cookie as ""vendorName.account.cookie" filename in your binary "autocheckin" dir  , eg: duokan.a1.cookie  -> duokan is vendor name, a1 is account
+4. save the cookie as ""vendorName.account.cookie" filename in your binary "autocheckin" dir  , eg: duokan.a1.cookie  -> duokan is vendor name, a1 is account  
 5. run ./autocheckin  
   
 This project is just undergoing development. Any suggestion is welcome!   
@@ -20,7 +20,8 @@ duokan.a2.cookie
 
 ret looks like:
 
-**Begin
+**
+Begin  
 Job ->  duokan : a1  
 Job ->  duokan : a2  
 Job ->  zimuzu : a1  
