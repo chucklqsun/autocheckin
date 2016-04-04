@@ -20,9 +20,10 @@ func init() {
 
 	//duokan app
 	myVendor.config["duokan"] = map[string]interface{}{
+		"mode":        2, //checkin only
 		"account":     []string{"a1", "a2"},
 		"status":      1,
-		"url_login":   "",
+		"url_login":   "xxxxxx",
 		"url_checkin": "https://www.duokan.com/checkin/v0/checkin",
 		//"url_checkin": "https://www.duokan.com/checkin/v0/status",
 		"proxy": "",
@@ -33,15 +34,17 @@ func init() {
 				"Origin":           "https://www.duokan.com",
 				"X-Requested-With": "com.duokan.reader",
 				"Referer":          "https://www.duokan.com/hs/user/task",
-				"cookie":           "",
 			},
 		},
-		"body": func() string {
+		"body_login": func() string {
+			return ""
+		},
+		"body_checkin": func(cookieStr string) string {
 			csrf := func(e int, t byte) int {
 				return (131*e + int(t)) % 65536
 			}
 			timestamp := time.Now().Unix()
-			cookie := strings.Split(myVendor.config["duokan"]["head"].(aci_head).data["cookie"], ";")
+			cookie := strings.Split(cookieStr, ";")
 			var device_id string
 			for _, v := range cookie {
 				v = strings.Trim(v, " ")
@@ -56,12 +59,71 @@ func init() {
 				e = csrf(e, v)
 			}
 			body := fmt.Sprintf("_t=%s&_c=%d", strconv.FormatInt(timestamp, 10), e)
+			//fmt.Println(body)
 			return body
 		},
-		"result": func(feedback map[string]interface{}) bool {
+		"result_login": func(feedback map[string]interface{}) bool {
 			if value, ok := feedback["result"]; ok {
 				retCode := value.(float64)
 				if retCode == 0.0 || retCode == 500002.0 {
+					return true
+				} else {
+					return false
+				}
+			}
+			return false
+		},
+		"result_checkin": func(feedback map[string]interface{}) bool {
+			if value, ok := feedback["result"]; ok {
+				retCode := value.(float64)
+				if retCode == 0.0 || retCode == 500002.0 {
+					return true
+				} else {
+					return false
+				}
+			}
+			return false
+		},
+	}
+
+	//zimuzu.tv
+	myVendor.config["zimuzu"] = map[string]interface{}{
+		"mode":        1, //login only
+		"account":     []string{"a1"},
+		"status":      1,
+		"url_login":   "http://www.zimuzu.tv/User/Login/ajaxLogin",
+		"url_checkin": "",
+		"proxy":       "",
+		"method":      "POST",
+		"head": aci_head{
+			data: map[string]string{
+				"Origin":           "http://www.zimuzu.tv",
+				"X-Requested-With": "XMLHttpRequest",
+				"Referer":          "http://www.zimuzu.tv/user/login",
+			},
+		},
+		"body_login": func(account string, password string) string {
+			body := fmt.Sprintf("account=%s&password=%s&remember=1&url_back=http://www.zimuzu.tv/", account, password)
+			return body
+		},
+		"body_checkin": func(cookieStr string) string {
+			return ""
+		},
+		"result_login": func(feedback map[string]interface{}) bool {
+			if value, ok := feedback["status"]; ok {
+				retCode := value.(float64)
+				if retCode == 1.0 {
+					return true
+				} else {
+					return false
+				}
+			}
+			return false
+		},
+		"result_checkin": func(feedback map[string]interface{}) bool {
+			if value, ok := feedback["status"]; ok {
+				retCode := value.(float64)
+				if retCode == 1.0 {
 					return true
 				} else {
 					return false

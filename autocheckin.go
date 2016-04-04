@@ -39,32 +39,65 @@ func readCookie(infile string) (str string, err error) {
 }
 
 func login(vendorName string, account string) bool {
+	aa, err := readAccount("account")
+	if err != nil {
+		fmt.Println("Account err:", err)
+		return false
+	}
+	username := aa[vendorName+"."+account]["username"]
+	password := aa[vendorName+"."+account]["password"]
+
+	login_req := aci_request{
+		account: account,
+		url:     myVendor.config[vendorName]["url_login"].(string),
+		proxy:   myVendor.config[vendorName]["proxy"].(string),
+		method:  myVendor.config[vendorName]["method"].(string),
+		head:    myVendor.config[vendorName]["head"].(aci_head).data,
+		body:    myVendor.config[vendorName]["body_login"].(func(string, string) string)(username, password),
+		cookie:  "",
+		result:  myVendor.config[vendorName]["result_login"],
+	}
+	return login_req.sendRequest()
 	return true
 }
 
 func checkin(vendorName string, account string) bool {
 	//todo: load cookie file in run dir now, auto loading in the further
-	var cookie_err error
-	myVendor.config[vendorName]["head"].(aci_head).data["cookie"], cookie_err = readCookie(vendorName + "." + account + ".cookie")
+	var (
+		cookie_err error
+		cookie     string
+	)
+
+	cookie, cookie_err = readCookie(vendorName + "." + account + ".cookie")
 	if cookie_err != nil {
-		fmt.Println(cookie_err)
+		fmt.Println("Cookie err:", cookie_err)
 		return false
 	}
+
 	checkin_req := aci_request{
-		url:    myVendor.config[vendorName]["url_checkin"].(string),
-		proxy:  myVendor.config[vendorName]["proxy"].(string),
-		method: myVendor.config[vendorName]["method"].(string),
-		head:   myVendor.config[vendorName]["head"].(aci_head).data,
-		body:   myVendor.config[vendorName]["body"],
-		result: myVendor.config[vendorName]["result"],
+		account: account,
+		url:     myVendor.config[vendorName]["url_checkin"].(string),
+		proxy:   myVendor.config[vendorName]["proxy"].(string),
+		method:  myVendor.config[vendorName]["method"].(string),
+		head:    myVendor.config[vendorName]["head"].(aci_head).data,
+		body:    myVendor.config[vendorName]["body_checkin"].(func(string) string)(cookie),
+		cookie:  cookie,
+		result:  myVendor.config[vendorName]["result_checkin"],
 	}
 	return checkin_req.sendRequest()
 }
 
 func controller(vendorName string, account string) {
-	if !checkin(vendorName, account) {
+	mode := myVendor.config[vendorName]["mode"].(int)
+	switch mode {
+	case 1:
 		login(vendorName, account)
+	case 2:
 		checkin(vendorName, account)
+		//		if !checkin(vendorName, account) {
+		//			//login(vendorName, account)    //current not support duokan dueto capt
+		//			checkin(vendorName, account)
+		//		}
 	}
 	w.Done()
 }

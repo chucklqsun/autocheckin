@@ -13,12 +13,14 @@ import (
 var _, _ = url.Parse("")
 
 type aci_request struct {
-	url    string
-	proxy  string
-	method string
-	head   map[string]string
-	body   interface{}
-	result interface{}
+	account string
+	url     string
+	proxy   string
+	method  string
+	head    map[string]string
+	body    string
+	cookie  string
+	result  interface{}
 }
 
 func (ar *aci_request) sendRequest() bool {
@@ -47,8 +49,7 @@ func (ar *aci_request) sendRequest() bool {
 	//setup request body
 	switch {
 	case method == "POST":
-		data_func := ar.body.(func() string)
-		body = strings.NewReader(data_func())
+		body = strings.NewReader(ar.body)
 	case method == "GET":
 		body = nil
 	default:
@@ -60,6 +61,7 @@ func (ar *aci_request) sendRequest() bool {
 	for key, value := range common_head.data {
 		req.Header.Set(key, value)
 	}
+	req.Header.Set("cookie", ar.cookie)
 
 	//setup vendor header
 	//"head" convert interface to aci_head type
@@ -69,34 +71,29 @@ func (ar *aci_request) sendRequest() bool {
 
 	resp, err := client.Do(req)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println("Resp err:", err)
 		return false
 	}
 
 	defer resp.Body.Close()
 
-	if err != nil {
-		fmt.Println(err)
+	respBody, err2 := ioutil.ReadAll(resp.Body)
+	if err2 != nil {
+		fmt.Println("ReadAll err:", err)
 		return false
 	} else {
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			fmt.Println(err)
-			return false
-		} else {
-			if feedback, err := json_decode(body); err == nil {
-				fmt.Println(feedback)
-				if ret := ar.result.(func(map[string]interface{}) bool)(feedback); !ret {
-					fmt.Println("exec ", ar.url, " fail")
-					return false
-				} else {
-					fmt.Println("exec ", ar.url, " success")
-					return true
-				}
-			} else {
-				fmt.Println(err)
+		if feedback, err := json_decode(respBody); err == nil {
+			fmt.Println(feedback)
+			if ret := ar.result.(func(map[string]interface{}) bool)(feedback); !ret {
+				fmt.Println("exec ", ar.account, ar.url, " fail")
 				return false
+			} else {
+				fmt.Println("exec ", ar.account, ar.url, " success")
+				return true
 			}
+		} else {
+			fmt.Println("Json decode error", err)
+			return false
 		}
 	}
 

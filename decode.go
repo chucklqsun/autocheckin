@@ -9,7 +9,6 @@ import (
 func json_decode(body []byte) (data map[string]interface{}, err error) {
 	err = nil
 	buf := bytes.NewBuffer(body)
-
 	reader, err := gzip.NewReader(buf)
 	if err == nil { //gzip result
 		dec := json.NewDecoder(reader)
