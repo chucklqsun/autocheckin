@@ -18,9 +18,10 @@ type aci_request struct {
 	method string
 	head   map[string]string
 	body   interface{}
+	result interface{}
 }
 
-func (ar *aci_request) sendRequest() {
+func (ar *aci_request) sendRequest() bool {
 
 	tr := &http.Transport{}
 
@@ -69,27 +70,36 @@ func (ar *aci_request) sendRequest() {
 	resp, err := client.Do(req)
 	if err != nil {
 		fmt.Println(err)
-		return
+		return false
 	}
 
 	defer resp.Body.Close()
 
 	if err != nil {
 		fmt.Println(err)
-		return
+		return false
 	} else {
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			fmt.Println(err)
-			return
+			return false
 		} else {
 			if feedback, err := json_decode(body); err == nil {
 				fmt.Println(feedback)
+				if ret := ar.result.(func(map[string]interface{}) bool)(feedback); !ret {
+					fmt.Println("exec ", ar.url, " fail")
+					return false
+				} else {
+					fmt.Println("exec ", ar.url, " success")
+					return true
+				}
 			} else {
 				fmt.Println(err)
-				return
+				return false
 			}
 		}
 	}
+
+	return false
 
 }

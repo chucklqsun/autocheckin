@@ -38,13 +38,17 @@ func readCookie(infile string) (str string, err error) {
 	return
 }
 
-func checkin(vendorName string) {
+func login(vendorName string, account string) bool {
+	return true
+}
+
+func checkin(vendorName string, account string) bool {
 	//todo: load cookie file in run dir now, auto loading in the further
 	var cookie_err error
-	myVendor.config[vendorName]["head"].(aci_head).data["cookie"], cookie_err = readCookie("cookie")
+	myVendor.config[vendorName]["head"].(aci_head).data["cookie"], cookie_err = readCookie(vendorName + "." + account + ".cookie")
 	if cookie_err != nil {
 		fmt.Println(cookie_err)
-		return
+		return false
 	}
 	checkin_req := aci_request{
 		url:    myVendor.config[vendorName]["url_checkin"].(string),
@@ -52,9 +56,16 @@ func checkin(vendorName string) {
 		method: myVendor.config[vendorName]["method"].(string),
 		head:   myVendor.config[vendorName]["head"].(aci_head).data,
 		body:   myVendor.config[vendorName]["body"],
+		result: myVendor.config[vendorName]["result"],
 	}
-	checkin_req.sendRequest()
+	return checkin_req.sendRequest()
+}
 
+func controller(vendorName string, account string) {
+	if !checkin(vendorName, account) {
+		login(vendorName, account)
+		checkin(vendorName, account)
+	}
 	w.Done()
 }
 
@@ -64,10 +75,11 @@ func main() {
 		if myVendor.config[key]["status"].(int) == 0 {
 			continue
 		}
-
-		w.Add(1)
-		go checkin(key)
-		fmt.Println("Job -> ", key)
+		for _, account := range myVendor.config[key]["account"].([]string) {
+			w.Add(1)
+			go controller(key, account)
+			fmt.Println("Job -> ", key, ":", account)
+		}
 	}
 	w.Wait()
 	fmt.Println("End")
