@@ -1,47 +1,17 @@
 package main
 
 import (
-	"bufio"
-	"fmt"
-	"io"
-	"os"
+	"flag"
+	"github.com/chucklqsun/glog"
 	"sync"
 )
 
 var w sync.WaitGroup
 
-func readCookie(infile string) (str string, err error) {
-
-	file, err := os.Open(infile)
-	if err != nil {
-		fmt.Println("Failed to open the input file ", infile)
-		return
-	}
-
-	defer file.Close()
-
-	br := bufio.NewReader(file)
-	for {
-		line, isPrefix, err1 := br.ReadLine()
-		if err1 != nil {
-			if err1 != io.EOF {
-				err = err1
-			}
-			break
-		}
-		if isPrefix {
-			fmt.Println("A too long line, seems unexpected.")
-			return
-		}
-		str = string(line)
-	}
-	return
-}
-
 func login(vendorName string, account string) bool {
 	aa, err := readAccount("account")
 	if err != nil {
-		fmt.Println("Account err:", err)
+		glog.Errorln("Account err:", err)
 		return false
 	}
 	username := aa[vendorName+"."+account]["username"]
@@ -70,7 +40,7 @@ func checkin(vendorName string, account string) bool {
 
 	cookie, cookie_err = readCookie(vendorName + "." + account + ".cookie")
 	if cookie_err != nil {
-		fmt.Println("Cookie err:", cookie_err)
+		glog.Errorln("Cookie err:", cookie_err)
 		return false
 	}
 
@@ -94,16 +64,24 @@ func controller(vendorName string, account string) {
 		login(vendorName, account)
 	case 2:
 		checkin(vendorName, account)
-		//		if !checkin(vendorName, account) {
-		//			//login(vendorName, account)    //current not support duokan dueto capt
-		//			checkin(vendorName, account)
-		//		}
+	case 3:
+		if !checkin(vendorName, account) {
+			login(vendorName, account) //current not support duokan dueto capt
+			checkin(vendorName, account)
+		}
 	}
 	w.Done()
 }
 
 func main() {
-	fmt.Println("Begin")
+	//initial command for log
+	flag.Parse()
+	flag.Lookup("log_dir").Value.Set("./")
+	flag.Lookup("log_name").Value.Set("log")
+	flag.Lookup("alsologtostderr").Value.Set("true")
+
+	glog.Info("Starting ...")
+
 	for key, _ := range myVendor.config {
 		if myVendor.config[key]["status"].(int) == 0 {
 			continue
@@ -111,9 +89,12 @@ func main() {
 		for _, account := range myVendor.config[key]["account"].([]string) {
 			w.Add(1)
 			go controller(key, account)
-			fmt.Println("Job -> ", key, ":", account)
+			glog.Infoln("Job -> ", key, ":", account)
 		}
 	}
 	w.Wait()
-	fmt.Println("End")
+	glog.Info("End")
+
+	//make sure log msg flush into file
+	glog.Flush()
 }

@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -44,13 +43,12 @@ func init() {
 				return (131*e + int(t)) % 65536
 			}
 			timestamp := time.Now().Unix()
-			cookie := strings.Split(cookieStr, ";")
 			var device_id string
-			for _, v := range cookie {
-				v = strings.Trim(v, " ")
-				if key := strings.Split(v, "="); key[0] == "device_id" {
-					device_id = key[1]
-				}
+			cookieHash := splitCookie(cookieStr)
+			if value, ok := cookieHash["device_id"]; ok {
+				device_id = value
+			} else {
+				device_id = ""
 			}
 
 			tk := []byte(fmt.Sprintf("%s&%s", device_id, strconv.FormatInt(timestamp, 10)))
@@ -59,7 +57,6 @@ func init() {
 				e = csrf(e, v)
 			}
 			body := fmt.Sprintf("_t=%s&_c=%d", strconv.FormatInt(timestamp, 10), e)
-			//fmt.Println(body)
 			return body
 		},
 		"result_login": func(feedback map[string]interface{}) bool {
@@ -124,6 +121,88 @@ func init() {
 			if value, ok := feedback["status"]; ok {
 				retCode := value.(float64)
 				if retCode == 1.0 {
+					return true
+				} else {
+					return false
+				}
+			}
+			return false
+		},
+	}
+
+	//daoju.qq.com get JD
+	myVendor.config["daoju_jd"] = map[string]interface{}{
+		"mode":        2, //checkin only
+		"account":     []string{"a1"},
+		"status":      1,
+		"url_login":   "xxxxxx",
+		"url_checkin": "http://apps.game.qq.com/ams/ame/ame.php?ameVersion=0.3&sServiceType=dj&iActivityId=11117&sServiceDepartment=djc&set_info=djc",
+		"proxy":       "",
+		//"proxy":       "http://192.168.159.1:8888",
+		"method": "POST",
+		"head": aci_head{
+			data: map[string]string{
+				"Origin":           "http://daoju.qq.com/index.shtml",
+				"X-Requested-With": "XMLHttpRequest",
+				"Referer":          "http://daoju.qq.com/index.shtml",
+			},
+		},
+		"body_login": func(account string, password string) string {
+			body := ""
+			return body
+		},
+		"body_checkin": func(cookieStr string) string {
+			getACSRFToken := func(str string) int {
+				if str != "" {
+					var hash int = 5381
+					strBit := []byte(str)
+					for _, v := range strBit {
+						hash += (hash << 5) + int(v)
+					}
+					return hash & 0x7fffffff
+				}
+				return 0
+			}
+			var g_tk string
+			cookieHash := splitCookie(cookieStr)
+			if skey, ok := cookieHash["skey"]; ok {
+				g_tk = fmt.Sprintf("%d", getACSRFToken(skey))
+			} else {
+				g_tk = ""
+			}
+
+			params := map[string]string{
+				"iFlowId":            "95581",
+				"sServiceType":       "dj",
+				"sServiceDepartment": "djc",
+				"ch":                 "10000",
+				"sDeviceID":          "00000000-60e9-6e8d-222b-9e7c5de6ffde",
+				"appVersion":         "39",
+				"g_tk":               g_tk,
+				"appSource":          "android",
+				"iActivityId":        "11117",
+			}
+			var body string
+			for key, value := range params {
+				body += key + "=" + value + "&"
+			}
+			return body
+		},
+		"result_login": func(feedback map[string]interface{}) bool {
+			if value, ok := feedback["ret"]; ok {
+				retCode := value.(string)
+				if retCode == "0" {
+					return true
+				} else {
+					return false
+				}
+			}
+			return false
+		},
+		"result_checkin": func(feedback map[string]interface{}) bool {
+			if value, ok := feedback["ret"]; ok {
+				retCode := value.(string)
+				if retCode == "0" {
 					return true
 				} else {
 					return false

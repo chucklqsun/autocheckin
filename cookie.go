@@ -8,10 +8,21 @@ import (
 	"strings"
 )
 
-type aci_account map[string]map[string]string
+type aci_cookie map[string]string
 
-func readAccount(infile string) (aa aci_account, err error) {
-	aa = make(map[string]map[string]string)
+func splitCookie(cookieStr string) aci_cookie {
+	var ret aci_cookie = make(map[string]string)
+	cookie := strings.Split(cookieStr, ";")
+	for _, v := range cookie {
+		v = strings.Trim(v, " ")
+		key := strings.Split(v, "=")
+		ret[key[0]] = key[1]
+	}
+	return ret
+}
+
+func readCookie(infile string) (str string, err error) {
+
 	file, err := os.Open(infile)
 	if err != nil {
 		glog.Errorln("Failed to open the input file ", infile)
@@ -33,11 +44,7 @@ func readAccount(infile string) (aa aci_account, err error) {
 			glog.Errorln("A too long line, seems unexpected.")
 			return
 		}
-		ln := strings.Split(string(line), "=")
-		aa[ln[0]] = make(map[string]string)
-		up := strings.Split(string(ln[1]), "|")
-		aa[ln[0]]["username"] = up[0]
-		aa[ln[0]]["password"] = up[1]
+		str = string(line)
 	}
 	return
 }

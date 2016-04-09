@@ -2,7 +2,7 @@ package main
 
 import (
 	"crypto/tls"
-	"fmt"
+	"github.com/chucklqsun/glog"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -71,7 +71,7 @@ func (ar *aci_request) sendRequest() bool {
 
 	resp, err := client.Do(req)
 	if err != nil {
-		fmt.Println("Resp err:", err)
+		glog.Errorln("Resp err:", err)
 		return false
 	}
 
@@ -79,20 +79,20 @@ func (ar *aci_request) sendRequest() bool {
 
 	respBody, err2 := ioutil.ReadAll(resp.Body)
 	if err2 != nil {
-		fmt.Println("ReadAll err:", err)
+		glog.Errorln("ReadAll err:", err)
 		return false
 	} else {
 		if feedback, err := json_decode(respBody); err == nil {
-			fmt.Println(feedback)
+			glog.Infoln(feedback)
 			if ret := ar.result.(func(map[string]interface{}) bool)(feedback); !ret {
-				fmt.Println("exec ", ar.account, ar.url, " fail")
+				glog.Infoln("exec ", ar.account, ar.url, " fail")
 				return false
 			} else {
-				fmt.Println("exec ", ar.account, ar.url, " success")
+				glog.Infoln("exec ", ar.account, ar.url, " success")
 				return true
 			}
 		} else {
-			fmt.Println("Json decode error", err)
+			glog.Errorln("Json decode error", err)
 			return false
 		}
 	}
