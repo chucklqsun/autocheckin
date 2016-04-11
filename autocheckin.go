@@ -23,11 +23,13 @@ func login(vendorName string, account string) bool {
 		proxy:   myVendor.config[vendorName]["proxy"].(string),
 		method:  myVendor.config[vendorName]["method"].(string),
 		head:    myVendor.config[vendorName]["head"].(aci_head).data,
-		body:    myVendor.config[vendorName]["body_login"].(func(string, string) string)(username, password),
+		body:    myVendor.config[vendorName]["body_login"].(func(string, string, string) string)(username, password, account),
 		cookie:  "",
 		result:  myVendor.config[vendorName]["result_login"],
 	}
-	return login_req.sendRequest()
+	if login_req.body != "" {
+		return login_req.sendRequest()
+	}
 	return true
 }
 
@@ -66,7 +68,7 @@ func controller(vendorName string, account string) {
 		checkin(vendorName, account)
 	case 3:
 		if !checkin(vendorName, account) {
-			login(vendorName, account) //current not support duokan dueto capt
+			login(vendorName, account) //current not support duokan due to capt
 			checkin(vendorName, account)
 		}
 	}

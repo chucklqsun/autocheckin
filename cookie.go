@@ -16,7 +16,11 @@ func splitCookie(cookieStr string) aci_cookie {
 	for _, v := range cookie {
 		v = strings.Trim(v, " ")
 		key := strings.Split(v, "=")
-		ret[key[0]] = key[1]
+		if len(key) == 2 {
+			ret[key[0]] = key[1]
+		} else {
+			ret[key[0]] = ""
+		}
 	}
 	return ret
 }

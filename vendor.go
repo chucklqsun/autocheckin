@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/chucklqsun/ptlogin"
 	"strconv"
 	"time"
 )
@@ -35,7 +36,7 @@ func init() {
 				"Referer":          "https://www.duokan.com/hs/user/task",
 			},
 		},
-		"body_login": func() string {
+		"body_login": func(account string, password string, idx string) string {
 			return ""
 		},
 		"body_checkin": func(cookieStr string) string {
@@ -99,7 +100,7 @@ func init() {
 				"Referer":          "http://www.zimuzu.tv/user/login",
 			},
 		},
-		"body_login": func(account string, password string) string {
+		"body_login": func(account string, password string, idx string) string {
 			body := fmt.Sprintf("account=%s&password=%s&remember=1&url_back=http://www.zimuzu.tv/", account, password)
 			return body
 		},
@@ -132,7 +133,7 @@ func init() {
 
 	//daoju.qq.com get JD
 	myVendor.config["daoju_jd"] = map[string]interface{}{
-		"mode":        2, //checkin only
+		"mode":        3, //checkin only
 		"account":     []string{"a1"},
 		"status":      1,
 		"url_login":   "xxxxxx",
@@ -147,7 +148,12 @@ func init() {
 				"Referer":          "http://daoju.qq.com/index.shtml",
 			},
 		},
-		"body_login": func(account string, password string) string {
+		"body_login": func(account string, password string, idx string) string {
+			var pt ptlogin.Ptlogin
+			//username,password
+			pt.SetInput(account, password)
+			pt.SetCookieName("daoju_jd." + idx + ".cookie")
+			pt.Ptui_checkVC()
 			body := ""
 			return body
 		},
@@ -202,7 +208,7 @@ func init() {
 		"result_checkin": func(feedback map[string]interface{}) bool {
 			if value, ok := feedback["ret"]; ok {
 				retCode := value.(string)
-				if retCode == "0" {
+				if retCode == "0" || retCode == "600" {
 					return true
 				} else {
 					return false

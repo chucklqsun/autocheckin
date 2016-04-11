@@ -93,6 +93,7 @@ func (ar *aci_request) sendRequest() bool {
 			}
 		} else {
 			glog.Errorln("Json decode error", err)
+			glog.Errorln("body:", respBody)
 			return false
 		}
 	}
